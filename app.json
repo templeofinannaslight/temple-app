@@ -21,8 +21,7 @@
       "foregroundImage": "./assets/images/app-icon-android-adaptive-foreground.png",
       "backgroundImage": "./assets/images/app-icon-android-adaptive-background.png"
     },
-    "allowBackup": false,
-    "edgeToEdgeEnabled": true
+    "allowBackup": false
   },
   "ios": {
     "icon": "./assets/images/app-icon-ios.png",
@@ -62,6 +61,10 @@
   "extra": {
     "ignite": {
       "version": "11.5.0"
+    },
+    "eas": {
+      "projectId": "741d86a3-3b9e-4a88-a39a-a62a03c3ce68"
     }
-  }
+  },
+  "owner": "jenova-marie"
 }

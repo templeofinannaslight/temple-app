@@ -84,6 +84,12 @@ web-build/
 
 # Configurations
 !env.js
+.env
+.env.local
+.env.*.local
+!.env.example
+eas.json
+!eas.json.example
 
 /coverage
 
