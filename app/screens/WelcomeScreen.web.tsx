@@ -1,14 +1,5 @@
-import { FC, useEffect, useRef } from "react"
-import {
-  ActivityIndicator,
-  Animated,
-  Image,
-  ImageStyle,
-  StyleSheet,
-  View,
-  ViewStyle,
-} from "react-native"
-import { WebView } from "react-native-webview"
+import { CSSProperties, FC, useEffect, useRef } from "react"
+import { Animated, Image, ImageStyle, StyleSheet, View, ViewStyle } from "react-native"
 
 import { Screen } from "@/components/Screen"
 import { useAppTheme } from "@/theme/context"
@@ -20,6 +11,12 @@ const overlayImage = require("@assets/images/temple-background.png")
 
 const OVERLAY_HOLD_MS = 500
 const OVERLAY_FADE_MS = 1000
+
+const $iframe: CSSProperties = {
+  width: "100%",
+  height: "100%",
+  border: "none",
+}
 
 export const WelcomeScreen: FC = function WelcomeScreen() {
   const { themed, theme } = useAppTheme()
@@ -38,33 +35,23 @@ export const WelcomeScreen: FC = function WelcomeScreen() {
 
   return (
     <Screen preset="fixed" contentContainerStyle={$styles.flex1} safeAreaEdges={["top"]}>
-      <WebView
-        source={{ uri: TEMPLE_URL }}
-        style={themed($webview)}
-        startInLoadingState
-        renderLoading={() => (
-          <View style={themed($loading)}>
-            <ActivityIndicator color={theme.colors.tint} />
-          </View>
-        )}
-      />
-      {/* eslint-disable-next-line react-native/no-inline-styles */}
-      <Animated.View style={[$overlay, { opacity: overlayOpacity }]}>
-        <Image source={overlayImage} resizeMode="cover" style={$overlayImage} />
-      </Animated.View>
+      <View style={themed($container)}>
+        <iframe
+          src={TEMPLE_URL}
+          title="Temple of Inanna's Light"
+          style={{ ...$iframe, backgroundColor: theme.colors.background }}
+        />
+        {/* eslint-disable-next-line react-native/no-inline-styles */}
+        <Animated.View style={[$overlay, { opacity: overlayOpacity }]}>
+          <Image source={overlayImage} resizeMode="cover" style={$overlayImage} />
+        </Animated.View>
+      </View>
     </Screen>
   )
 }
 
-const $webview: ThemedStyle<ViewStyle> = ({ colors }) => ({
+const $container: ThemedStyle<ViewStyle> = ({ colors }) => ({
   flex: 1,
-  backgroundColor: colors.background,
-})
-
-const $loading: ThemedStyle<ViewStyle> = ({ colors }) => ({
-  ...StyleSheet.absoluteFillObject,
-  alignItems: "center",
-  justifyContent: "center",
   backgroundColor: colors.background,
 })
 
