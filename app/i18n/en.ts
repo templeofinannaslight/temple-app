@@ -10,6 +10,14 @@ const en = {
     readyForLaunch: "Your app, almost ready for launch!",
     exciting: "(ohh, this is exciting!)",
   },
+  loginScreen: {
+    title: "To rekindle the light of ancient Uruk in the hearts of all 𒀭Inanna's people.",
+    subtitle:
+      "A sanctuary where the marginalized, the seeking, and the devoted may all stand in Her light together.",
+    login: "Login",
+    register: "Signup",
+    error: "Something went wrong. Please try again.",
+  },
   errorScreen: {
     title: "Something went wrong!",
     friendlySubtitle:

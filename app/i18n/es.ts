@@ -12,6 +12,14 @@ const es: Translations = {
     readyForLaunch: "Tu app, casi lista para su lanzamiento",
     exciting: "(¡ohh, esto es emocionante!)",
   },
+  loginScreen: {
+    title: "Reavivar la luz de la antigua Uruk en los corazones de todo el pueblo de 𒀭Inanna.",
+    subtitle:
+      "Un santuario donde los marginados, los buscadores y los devotos pueden permanecer juntos en Su luz.",
+    login: "Iniciar sesión",
+    register: "Registrarse",
+    error: "Algo salió mal. Por favor, inténtalo de nuevo.",
+  },
   errorScreen: {
     title: "¡Algo salió mal!",
     friendlySubtitle:

@@ -12,6 +12,14 @@ const fr: Translations = {
     readyForLaunch: "Votre application, presque prête pour le lancement !",
     exciting: "(ohh, c'est excitant !)",
   },
+  loginScreen: {
+    title: "Raviver la lumière de l'ancienne Uruk dans les cœurs de tout le peuple de 𒀭Inanna.",
+    subtitle:
+      "Un sanctuaire où les marginalisés, les chercheurs et les fidèles peuvent se tenir ensemble dans Sa lumière.",
+    login: "Connexion",
+    register: "S'inscrire",
+    error: "Quelque chose s'est mal passé. Veuillez réessayer.",
+  },
   errorScreen: {
     title: "Quelque chose s'est mal passé !",
     friendlySubtitle:
