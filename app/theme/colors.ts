@@ -33,6 +33,19 @@ const palette = {
 
   overlay20: "rgba(25, 16, 21, 0.2)",
   overlay50: "rgba(25, 16, 21, 0.5)",
+
+  // Temple of Inanna's Light brand palette — sourced from temple-www.
+  // These are intentionally identical across light and dark themes.
+  templeBrand: "#c30a68",
+  templeBrandLight: "#e91e8c",
+  templeBrandDark: "#9a0853",
+  templeAccent: "#26619c",
+  templeAccentLight: "#3a7bc8",
+  templeAccentDark: "#1d4d7a",
+  templeNeon: "#ff2d95",
+  templeGray100: "#f3f4f6",
+  templeGray300: "#d1d5db",
+  templeGray950: "#030712",
 } as const
 
 export const colors = {
@@ -57,7 +70,7 @@ export const colors = {
   /**
    * The default color of the screen background.
    */
-  background: palette.neutral200,
+  background: palette.neutral900,
   /**
    * The default border color.
    */
