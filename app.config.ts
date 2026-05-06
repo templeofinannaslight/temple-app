@@ -17,6 +17,11 @@ import "tsx/cjs"
 module.exports = ({ config }: ConfigContext): Partial<ExpoConfig> => {
   const existingPlugins = config.plugins ?? []
 
+  const auth0Domain = process.env.EXPO_PUBLIC_AUTH0_DOMAIN
+  const auth0Plugin: ExpoConfig["plugins"] = auth0Domain
+    ? [["react-native-auth0", { domain: auth0Domain }]]
+    : []
+
   return {
     ...config,
     ios: {
@@ -36,6 +41,6 @@ module.exports = ({ config }: ConfigContext): Partial<ExpoConfig> => {
         ],
       },
     },
-    plugins: [...existingPlugins],
+    plugins: [...existingPlugins, ...auth0Plugin],
   }
 }

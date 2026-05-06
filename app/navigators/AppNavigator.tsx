@@ -7,8 +7,11 @@
 import { NavigationContainer } from "@react-navigation/native"
 import { createNativeStackNavigator } from "@react-navigation/native-stack"
 
+import { useAuth0 } from "@/auth/useAuth0"
 import Config from "@/config"
+import { disableAuth } from "@/config/auth0"
 import { ErrorBoundary } from "@/screens/ErrorScreen/ErrorBoundary"
+import { LoginScreen } from "@/screens/LoginScreen"
 import { WelcomeScreen } from "@/screens/WelcomeScreen"
 import { useAppTheme } from "@/theme/context"
 
@@ -28,6 +31,7 @@ const AppStack = () => {
   const {
     theme: { colors },
   } = useAppTheme()
+  const { user } = useAuth0()
 
   return (
     <Stack.Navigator
@@ -39,9 +43,15 @@ const AppStack = () => {
         },
       }}
     >
-      <Stack.Screen name="Welcome" component={WelcomeScreen} />
-      {/** 🔥 Your screens go here */}
-      {/* IGNITE_GENERATOR_ANCHOR_APP_STACK_SCREENS */}
+      {disableAuth || user ? (
+        <>
+          <Stack.Screen name="Welcome" component={WelcomeScreen} />
+          {/** 🔥 Your screens go here */}
+          {/* IGNITE_GENERATOR_ANCHOR_APP_STACK_SCREENS */}
+        </>
+      ) : (
+        <Stack.Screen name="Login" component={LoginScreen} />
+      )}
     </Stack.Navigator>
   )
 }
