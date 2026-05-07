@@ -2,7 +2,7 @@
   "name": "temple-app",
   "slug": "temple-app",
   "scheme": "temple-app",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "orientation": "portrait",
   "userInterfaceStyle": "automatic",
   "icon": "./assets/images/app-icon-all.png",

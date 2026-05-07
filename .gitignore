@@ -96,3 +96,6 @@ eas.json
 # Dependency Graph Visualizations
 app-dependency-graph.svg
 app-dependency-graph.png
+
+# eas
+credentials.json
