@@ -1,5 +1,6 @@
-import { FC, useState } from "react"
+import { FC, useEffect, useState } from "react"
 import { Image, ImageStyle, ScrollView, StyleSheet, TextStyle, View, ViewStyle } from "react-native"
+import * as SplashScreen from "expo-splash-screen"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { useAuth0 } from "@/auth/useAuth0"
@@ -21,6 +22,10 @@ export const LoginScreen: FC = function LoginScreen() {
   const insets = useSafeAreaInsets()
   const [error, setError] = useState<string | undefined>()
   const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    SplashScreen.hideAsync().catch(() => {})
+  }, [])
 
   const startUniversalLogin = async (screenHint?: "signup" | "login") => {
     if (busy) return

@@ -21,6 +21,7 @@ import "./utils/gestureHandler"
 import { useEffect, useState } from "react"
 import { useFonts } from "expo-font"
 import * as Linking from "expo-linking"
+import * as SplashScreen from "expo-splash-screen"
 import { KeyboardProvider } from "react-native-keyboard-controller"
 import { initialWindowMetrics, SafeAreaProvider } from "react-native-safe-area-context"
 
@@ -34,6 +35,15 @@ import { ThemeProvider } from "./theme/context"
 import { customFontsToLoad } from "./theme/typography"
 import { loadDateFnsLocale } from "./utils/formatDate"
 import * as storage from "./utils/storage"
+
+// Keep the native splash visible until we explicitly dismiss it.
+// LoginScreen hides on mount when auth is enabled. A 5s fallback covers
+// the disableAuth path AND the case where an existing session lands the
+// user directly on WelcomeScreen. First hide call wins; subsequent are no-ops.
+SplashScreen.preventAutoHideAsync().catch(() => {})
+setTimeout(() => {
+  SplashScreen.hideAsync().catch(() => {})
+}, 5000)
 
 export const NAVIGATION_PERSISTENCE_KEY = "NAVIGATION_STATE"
 

@@ -38,10 +38,16 @@
     [
       "expo-splash-screen",
       {
-        "image": "./assets/images/app-icon-android-adaptive-foreground.png",
-        "imageWidth": 300,
-        "resizeMode": "contain",
-        "backgroundColor": "#191015"
+        "image": "./assets/images/splash-fullbleed.png",
+        "resizeMode": "cover",
+        "backgroundColor": "#000000",
+        "enableFullScreenImage_legacy": true,
+        "android": {
+          "image": "./assets/images/temple-logo.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#000000"
+        }
       }
     ],
     [
