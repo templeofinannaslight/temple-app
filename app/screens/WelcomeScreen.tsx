@@ -4,11 +4,12 @@ import {
   Animated,
   Image,
   ImageStyle,
+  Linking,
   StyleSheet,
   View,
   ViewStyle,
 } from "react-native"
-import { WebView } from "react-native-webview"
+import { WebView, WebViewNavigation } from "react-native-webview"
 
 import { Screen } from "@/components/Screen"
 import { useAppTheme } from "@/theme/context"
@@ -16,10 +17,33 @@ import { $styles } from "@/theme/styles"
 import type { ThemedStyle } from "@/theme/types"
 
 const TEMPLE_URL = process.env.EXPO_PUBLIC_TEMPLE_WWW_URL ?? "https://www.templeofinannaslight.org"
+const TEMPLE_HOST = (() => {
+  try {
+    return new URL(TEMPLE_URL).host
+  } catch {
+    return ""
+  }
+})()
 const overlayImage = require("@assets/images/temple-background.png")
 
 const OVERLAY_HOLD_MS = 500
 const OVERLAY_FADE_MS = 1000
+
+// Allow in-WebView navigation only for the temple-www origin (and about:blank
+// for the WebView's own startup quirk). Everything else — Discord invite, social
+// links, etc. — opens in the system browser so users land in the right app.
+const shouldOpenInWebView = (request: WebViewNavigation): boolean => {
+  const { url } = request
+  if (!url || url === "about:blank") return true
+  try {
+    const host = new URL(url).host
+    if (host === TEMPLE_HOST) return true
+  } catch {
+    return true
+  }
+  Linking.openURL(url).catch(() => {})
+  return false
+}
 
 export const WelcomeScreen: FC = function WelcomeScreen() {
   const { themed, theme } = useAppTheme()
@@ -42,6 +66,7 @@ export const WelcomeScreen: FC = function WelcomeScreen() {
         source={{ uri: TEMPLE_URL }}
         style={themed($webview)}
         startInLoadingState
+        onShouldStartLoadWithRequest={shouldOpenInWebView}
         renderLoading={() => (
           <View style={themed($loading)}>
             <ActivityIndicator color={theme.colors.tint} />
