@@ -712,7 +712,7 @@ export const CalendarScreen: FC = function CalendarScreen() {
             <Text style={styles.headerTitle} text={"The Sacred Year of \u{1202D}Inanna"} />
             <Text
               style={styles.headerTagline}
-              text="Thirteen Lunations \u00B7 From Barazagar to \u0160ekinku"
+              text={"Thirteen Lunations \u00B7 From Barazagar to \u0160ekinku"}
             />
           </View>
 
