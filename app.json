@@ -7,7 +7,12 @@
   "userInterfaceStyle": "automatic",
   "icon": "./assets/images/app-icon-all.png",
   "updates": {
+    "url": "https://u.expo.dev/741d86a3-3b9e-4a88-a39a-a62a03c3ce68",
+    "checkAutomatically": "ON_LOAD",
     "fallbackToCacheTimeout": 0
+  },
+  "runtimeVersion": {
+    "policy": "appVersion"
   },
   "newArchEnabled": true,
   "jsEngine": "hermes",

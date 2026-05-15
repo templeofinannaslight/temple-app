@@ -22,6 +22,7 @@ import { useEffect, useState } from "react"
 import { useFonts } from "expo-font"
 import * as Linking from "expo-linking"
 import * as SplashScreen from "expo-splash-screen"
+import * as Updates from "expo-updates"
 import { KeyboardProvider } from "react-native-keyboard-controller"
 import { initialWindowMetrics, SafeAreaProvider } from "react-native-safe-area-context"
 
@@ -93,6 +94,26 @@ export function App() {
     initI18n()
       .then(() => setIsI18nInitialized(true))
       .then(() => loadDateFnsLocale())
+  }, [])
+
+  // Check for an EAS Update on cold launch. If one is available, fetch it and
+  // restart so the user lands on the newest JS bundle. Skipped in dev (Metro
+  // serves the bundle live) and silently ignored on failures (offline, no
+  // matching channel/runtime, etc.) so a broken update server never blocks
+  // the app from booting.
+  useEffect(() => {
+    if (__DEV__ || !Updates.isEnabled) return
+    ;(async () => {
+      try {
+        const result = await Updates.checkForUpdateAsync()
+        if (result.isAvailable) {
+          await Updates.fetchUpdateAsync()
+          await Updates.reloadAsync()
+        }
+      } catch {
+        /* swallow — non-fatal */
+      }
+    })()
   }, [])
 
   // Before we show the app, we have to wait for our state to be ready.

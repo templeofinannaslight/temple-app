@@ -53,6 +53,7 @@
     "expo-localization": "~55.0.8",
     "expo-splash-screen": "~55.0.10",
     "expo-system-ui": "~55.0.9",
+    "expo-updates": "~55.0.22",
     "i18next": "^23.14.0",
     "intl-pluralrules": "^2.0.1",
     "react": "19.2.0",
