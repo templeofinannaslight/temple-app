@@ -69,3 +69,13 @@ export const typography = {
    */
   code: Platform.select({ ios: fonts.courier, android: fonts.monospace }),
 }
+
+export const typeScale = {
+  label: 14,
+  caption: 15,
+  small: 16,
+  body: 17,
+  subtitle: 20,
+  title: 24,
+  display: 36,
+} as const
