@@ -3,6 +3,13 @@
 
 import { Platform } from "react-native"
 import {
+  CormorantGaramond_300Light as cormorantLight,
+  CormorantGaramond_400Regular as cormorantRegular,
+  CormorantGaramond_500Medium as cormorantMedium,
+  CormorantGaramond_600SemiBold as cormorantSemiBold,
+  CormorantGaramond_700Bold as cormorantBold,
+} from "@expo-google-fonts/cormorant-garamond"
+import {
   SpaceGrotesk_300Light as spaceGroteskLight,
   SpaceGrotesk_400Regular as spaceGroteskRegular,
   SpaceGrotesk_500Medium as spaceGroteskMedium,
@@ -16,6 +23,11 @@ export const customFontsToLoad = {
   spaceGroteskMedium,
   spaceGroteskSemiBold,
   spaceGroteskBold,
+  cormorantLight,
+  cormorantRegular,
+  cormorantMedium,
+  cormorantSemiBold,
+  cormorantBold,
 }
 
 const fonts = {
@@ -26,6 +38,14 @@ const fonts = {
     medium: "spaceGroteskMedium",
     semiBold: "spaceGroteskSemiBold",
     bold: "spaceGroteskBold",
+  },
+  cormorant: {
+    // Serif used by the Calendar wheel + SVG labels.
+    light: "cormorantLight",
+    normal: "cormorantRegular",
+    medium: "cormorantMedium",
+    semiBold: "cormorantSemiBold",
+    bold: "cormorantBold",
   },
   helveticaNeue: {
     // iOS only font.

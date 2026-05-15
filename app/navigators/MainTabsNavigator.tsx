@@ -3,6 +3,7 @@ import { StyleSheet, Text as RNText } from "react-native"
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
+import { CalendarScreen } from "@/screens/CalendarScreen"
 import { ShrineScreen } from "@/screens/ShrineScreen"
 import { WelcomeScreen } from "@/screens/WelcomeScreen"
 import { typography, typeScale } from "@/theme/typography"
@@ -51,6 +52,14 @@ export const MainTabsNavigator: FC = function MainTabsNavigator() {
         options={{
           tabBarLabel: "Shrine",
           tabBarIcon: ({ focused }) => <TabGlyph glyph="✦" focused={focused} />,
+        }}
+      />
+      <Tab.Screen
+        name="Calendar"
+        component={CalendarScreen}
+        options={{
+          tabBarLabel: "Calendar",
+          tabBarIcon: ({ focused }) => <TabGlyph glyph="☽" focused={focused} />,
         }}
       />
     </Tab.Navigator>

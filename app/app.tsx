@@ -58,6 +58,7 @@ const config = {
       screens: {
         Home: "welcome",
         Shrine: "shrine",
+        Calendar: "calendar",
       },
     },
     Demo: {
