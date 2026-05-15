@@ -14,8 +14,8 @@
     "compile": "tsc --noEmit -p . --pretty",
     "lint": "eslint . --fix",
     "lint:check": "eslint .",
-    "depcruise": "depcruise app --config .dependency-cruiser.js",
-    "depcruise:graph": "depcruise app --include-only \"^app\" --config .dependency-cruiser.js --output-type dot > app-dependency-graph.dot && dot -T svg app-dependency-graph.dot -o app-dependency-graph.svg && dot -T png app-dependency-graph.dot -o app-dependency-graph.png && rm app-dependency-graph.dot",
+    "lint:deps": "depcruise app --config .dependency-cruiser.js",
+    "lint:deps:graph": "depcruise app --include-only \"^app\" --config .dependency-cruiser.js --output-type dot > app-dependency-graph.dot && dot -T svg app-dependency-graph.dot -o app-dependency-graph.svg && dot -T png app-dependency-graph.dot -o app-dependency-graph.png && rm app-dependency-graph.dot",
     "align-deps": "npx expo install --fix",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -28,14 +28,24 @@
     "build:android:sim": "eas build --profile development --platform android --local",
     "build:android:device": "eas build --profile development:device --platform android --local",
     "build:android:preview": "eas build --profile preview --platform android --local",
-    "build:android:prod": "eas build --profile production --platform android --local"
+    "build:android:prod": "eas build --profile production --platform android --local",
+    "build:cloud:ios:preview": "eas build --profile preview --platform ios",
+    "build:cloud:ios:prod": "eas build --profile production --platform ios",
+    "build:cloud:android:preview": "eas build --profile preview --platform android",
+    "build:cloud:android:prod": "eas build --profile production --platform android",
+    "build:cloud:all": "eas build --profile production --platform all",
+    "submit:ios": "eas submit --platform ios --latest",
+    "submit:android": "eas submit --platform android --latest",
+    "update:production": "eas update --branch production",
+    "update:preview": "eas update --branch preview",
+    "update:development": "eas update --branch development"
   },
   "dependencies": {
     "@auth0/auth0-react": "^2.16.2",
     "@expo-google-fonts/cormorant-garamond": "^0.4.1",
     "@expo-google-fonts/space-grotesk": "^0.4.0",
     "@expo/metro-runtime": "~55.0.6",
-    "@jenova-marie/sumerian-date": "^0.1.0",
+    "@jenova-marie/sumerian-date": "^1.0.0",
     "@react-native-masked-view/masked-view": "0.3.2",
     "@react-navigation/bottom-tabs": "^7.2.0",
     "@react-navigation/native": "^7.0.14",
@@ -43,16 +53,16 @@
     "@shopify/react-native-skia": "2.6.2",
     "apisauce": "3.1.1",
     "date-fns": "^4.1.0",
-    "expo": "55.0.23",
+    "expo": "55.0.24",
     "expo-blur": "~55.0.14",
-    "expo-build-properties": "~55.0.9",
-    "expo-dev-client": "~55.0.11",
+    "expo-build-properties": "~55.0.14",
+    "expo-dev-client": "~55.0.34",
     "expo-font": "~55.0.4",
-    "expo-linear-gradient": "~55.0.13",
+    "expo-linear-gradient": "~55.0.14",
     "expo-linking": "~55.0.7",
-    "expo-localization": "~55.0.8",
-    "expo-splash-screen": "~55.0.10",
-    "expo-system-ui": "~55.0.9",
+    "expo-localization": "~55.0.14",
+    "expo-splash-screen": "~55.0.21",
+    "expo-system-ui": "~55.0.18",
     "expo-updates": "~55.0.22",
     "i18next": "^23.14.0",
     "intl-pluralrules": "^2.0.1",
@@ -85,7 +95,7 @@
     "babel-jest": "^29.2.1",
     "dependency-cruiser": "^17.0.2",
     "eslint": "^8.57.0",
-    "eslint-config-expo": "~55.0.0",
+    "eslint-config-expo": "~55.0.1",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-prettier": "^5.2.1",
     "eslint-plugin-react-native": "^4.1.0",
@@ -104,5 +114,17 @@
   },
   "engines": {
     "node": ">=20.0.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@shopify/react-native-skia"
+    ]
+  },
+  "expo": {
+    "install": {
+      "exclude": [
+        "@shopify/react-native-skia"
+      ]
+    }
   }
 }
