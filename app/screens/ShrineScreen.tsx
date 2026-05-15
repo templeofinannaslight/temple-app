@@ -6,6 +6,7 @@ import { Text } from "@/components/Text"
 import { typography, typeScale } from "@/theme/typography"
 import { load, save } from "@/utils/storage"
 
+import { loadSkiaForWeb } from "./shrine/loadSkiaWeb"
 import {
   CANDLE_POSITIONS,
   TOTAL_CANDLES,
@@ -13,11 +14,6 @@ import {
   getCandleType,
 } from "./shrine/shrineBloomShader"
 import { IMAGE_ASPECT, ShrineSkiaCanvas } from "./shrine/ShrineSkiaCanvas"
-
-// CanvasKit WASM version must match the one pinned by @shopify/react-native-skia
-// (currently 0.41.0 for skia 2.6.x). A mismatch causes a WebAssembly LinkError
-// at runtime; bumping skia means updating this URL too.
-const CANVASKIT_VERSION = "0.41.0"
 
 /** Persisted as { [candleId]: litAtTimestamp } */
 type CandleLedger = Record<number, number>
@@ -332,23 +328,19 @@ const styles = StyleSheet.create({
 
 // On web, CanvasKit (Skia's WASM build) must be loaded explicitly before any
 // useImage / Canvas hook will work — otherwise everything silently returns null.
-// Native gets Skia via linked native module so no bootstrap needed.
+// Native gets Skia via linked native module so no bootstrap needed. The web
+// loader lives in loadSkiaWeb.web.ts; the native shim is a no-op. Splitting
+// across platform-specific files keeps canvaskit-wasm (which require("fs"))
+// out of the native bundle graph that Metro analyzes statically.
 export const ShrineScreen: FC = function ShrineScreen() {
   const [skiaReady, setSkiaReady] = useState(Platform.OS !== "web")
 
   useEffect(() => {
     if (Platform.OS !== "web") return
     let cancelled = false
-    import("@shopify/react-native-skia/lib/module/web")
-      .then((m) =>
-        m.LoadSkiaWeb({
-          locateFile: (file: string) =>
-            `https://cdn.jsdelivr.net/npm/canvaskit-wasm@${CANVASKIT_VERSION}/bin/full/${file}`,
-        }),
-      )
-      .then(() => {
-        if (!cancelled) setSkiaReady(true)
-      })
+    loadSkiaForWeb().then(() => {
+      if (!cancelled) setSkiaReady(true)
+    })
     return () => {
       cancelled = true
     }
