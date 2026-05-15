@@ -15,9 +15,15 @@ export type DemoTabParamList = {
   DemoPodcastList: undefined
 }
 
+// Main Tab Navigator types — the post-auth tab bar (Home / Shrine)
+export type MainTabParamList = {
+  Home: undefined
+  Shrine: undefined
+}
+
 // App Stack Navigator types
 export type AppStackParamList = {
-  Welcome: undefined
+  Main: NavigatorScreenParams<MainTabParamList>
   Login: undefined
   Demo: NavigatorScreenParams<DemoTabParamList>
   // 🔥 Your screens go here

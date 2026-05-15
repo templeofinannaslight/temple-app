@@ -12,9 +12,9 @@ import Config from "@/config"
 import { disableAuth } from "@/config/auth0"
 import { ErrorBoundary } from "@/screens/ErrorScreen/ErrorBoundary"
 import { LoginScreen } from "@/screens/LoginScreen"
-import { WelcomeScreen } from "@/screens/WelcomeScreen"
 import { useAppTheme } from "@/theme/context"
 
+import { MainTabsNavigator } from "./MainTabsNavigator"
 import type { AppStackParamList, NavigationProps } from "./navigationTypes"
 import { navigationRef, useBackButtonHandler } from "./navigationUtilities"
 
@@ -45,7 +45,7 @@ const AppStack = () => {
     >
       {disableAuth || user ? (
         <>
-          <Stack.Screen name="Welcome" component={WelcomeScreen} />
+          <Stack.Screen name="Main" component={MainTabsNavigator} />
           {/** 🔥 Your screens go here */}
           {/* IGNITE_GENERATOR_ANCHOR_APP_STACK_SCREENS */}
         </>
