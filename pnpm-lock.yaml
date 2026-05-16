@@ -21,7 +21,7 @@ importers:
         specifier: ~55.0.6
         version: 55.0.11(@expo/dom-webview@55.0.6)(expo@55.0.24)(react-dom@19.2.0(react@19.2.0))(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)
       '@jenova-marie/sumerian-date':
-        specifier: ^1.0.0
+        specifier: ^1.0.1
         version: 1.0.1
       '@react-native-masked-view/masked-view':
         specifier: 0.3.2
@@ -1341,7 +1341,8 @@ packages:
     engines: {node: '>=8'}
 
   '@jenova-marie/sumerian-date@1.0.1':
-    resolution: {integrity: sha512-jfjJK0TEUb8Q3hHzxruYX9ACs7gTmbKsXn2bOFTgZmMQZkubpveL0FI/EJCf9ezm07vZdJiO3zFUzaurjaRh6A==, tarball: http://git.rso/api/packages/jenova-marie/npm/%40jenova-marie%2Fsumerian-date/-/1.0.1/sumerian-date-1.0.1.tgz}
+    resolution: {integrity: sha512-jfjJK0TEUb8Q3hHzxruYX9ACs7gTmbKsXn2bOFTgZmMQZkubpveL0FI/EJCf9ezm07vZdJiO3zFUzaurjaRh6A==}
+    engines: {node: '>=14'}
 
   '@jest/console@29.7.0':
     resolution: {integrity: sha512-5Ni4CU7XHQi32IJ398EEP4RrB8eV09sXP2ROqD4bksHrnTree52PsxvX8tpL8LvTZ3pFzXyPbNQReSN41CAhOg==}
