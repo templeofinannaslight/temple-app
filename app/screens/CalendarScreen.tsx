@@ -1,5 +1,14 @@
-import { FC, useMemo, useState } from "react"
-import { Pressable, StyleSheet, View, ViewStyle, useWindowDimensions } from "react-native"
+import { FC, useMemo, useRef, useState } from "react"
+import {
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Pressable,
+  StyleSheet,
+  View,
+  ViewStyle,
+  useWindowDimensions,
+} from "react-native"
+import type { KeyboardAwareScrollViewRef } from "react-native-keyboard-controller"
 import { LinearGradient } from "expo-linear-gradient"
 import { sumerianDate } from "@jenova-marie/sumerian-date"
 import Svg, {
@@ -19,11 +28,21 @@ import { Text } from "@/components/Text"
 import {
   CalendarMonth,
   LONG_YEAR_POSITIONS,
+  LunarPhase,
   LUNAR_PHASES,
   MONTH_NAME_TO_INDEX,
   MONTHS,
 } from "@/data/calendar"
 import { typeScale, typography } from "@/theme/typography"
+import {
+  dayOfMonthFor,
+  firstQuarterJDE,
+  fullMoonJDE,
+  jdeToDate,
+  kFromNewMoonJDE,
+  lastQuarterJDE,
+  newMoonJDE,
+} from "@/utils/moonPhase"
 
 // ═══════════════════════════════════════════════════════════
 // HELPERS
@@ -65,6 +84,8 @@ function useSumerianCalendar() {
       const currentMonthIndex = MONTH_NAME_TO_INDEX[sd.monthName] ?? -1
 
       const monthDates = new Map<number, { startDate: Date; endDate: Date; lengthDays: number }>()
+      let currentNewMoonJDE: number | null = null
+      let currentMonthStartDate: Date | null = null
       for (const m of sy.months) {
         const idx = MONTH_NAME_TO_INDEX[m.name]
         if (idx !== undefined) {
@@ -73,6 +94,10 @@ function useSumerianCalendar() {
             endDate: m.endDate,
             lengthDays: m.lengthDays,
           })
+        }
+        if (m.name === sd.monthName) {
+          currentNewMoonJDE = m.newMoonJDE
+          currentMonthStartDate = m.startDate
         }
       }
 
@@ -87,6 +112,8 @@ function useSumerianCalendar() {
         isIntercalaryYear: sd.isIntercalaryYear,
         isIntercalaryMonth: sd.isIntercalaryMonth,
         monthDates,
+        currentNewMoonJDE,
+        currentMonthStartDate,
         vernalEquinoxDate: sy.vernalEquinoxDate,
         yearStart: sy.yearStart,
         yearEnd: sy.yearEnd,
@@ -574,25 +601,318 @@ const MonthListView: FC<{
 // LUNAR PHASE BAR
 // ═══════════════════════════════════════════════════════════
 
-const KEY_PHASE_DAYS = [1, 7, 15, 26, 29]
+// Full local-time + timezone formatters for the phase detail card. Constructed
+// lazily — Hermes' Intl support varies between builds, and a module-scope
+// constructor throw here would torpedo the entire CalendarScreen export.
+function formatLongDate(d: Date): string {
+  try {
+    return new Intl.DateTimeFormat(undefined, {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    }).format(d)
+  } catch {
+    return d.toDateString()
+  }
+}
 
-const LunarPhaseBar: FC = () => {
+function formatLongTime(d: Date): string {
+  try {
+    return new Intl.DateTimeFormat(undefined, {
+      hour: "numeric",
+      minute: "2-digit",
+      timeZoneName: "short",
+    }).format(d)
+  } catch {
+    return d.toLocaleTimeString()
+  }
+}
+
+function formatRelative(moment: Date): string {
+  const diffMs = moment.getTime() - Date.now()
+  const absMs = Math.abs(diffMs)
+  try {
+    const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" })
+    if (absMs >= 86400000) return rtf.format(Math.round(diffMs / 86400000), "day")
+    if (absMs >= 3600000) return rtf.format(Math.round(diffMs / 3600000), "hour")
+    return rtf.format(Math.round(diffMs / 60000), "minute")
+  } catch {
+    if (absMs >= 86400000) {
+      const days = Math.round(diffMs / 86400000)
+      return days >= 0 ? `in ${days} days` : `${-days} days ago`
+    }
+    const hours = Math.round(diffMs / 3600000)
+    return hours >= 0 ? `in ${hours} hours` : `${-hours} hours ago`
+  }
+}
+
+/** Illumination at the moment of a named phase. By definition these are exact
+ *  fractions of the lunation, not derived from the cosine approximation. */
+function phaseIllumination(name: string): number | null {
+  if (name === "Full Moon (Ešeš)") return 100
+  if (name === "First Quarter" || name === "Last Quarter") return 50
+  return null
+}
+
+// Lunation phases that have an exact astronomical moment we can solve for.
+// New Crescent and Dark Moon are anchored to the Sumerian calendar (Day 1 and
+// the last day before the next first-crescent sighting) rather than computed.
+const KEY_PHASE_NAMES = ["New Crescent", "First Quarter", "Full Moon (E\u0161e\u0161)", "Waning Crescent", "Dark Moon (Kisiga)"]
+
+/** Compute the actual day-of-month each phase falls on for the lunation
+ *  anchored by `newMoonJDE`. Returns the same shape as the static
+ *  LUNAR_PHASES catalogue but with `day` values true for THIS month. */
+function computeLunarPhases(
+  currentNewMoonJDE: number,
+  monthStartDate: Date,
+  monthLengthDays: number,
+): LunarPhase[] {
+  const k = kFromNewMoonJDE(currentNewMoonJDE)
+  const newMoonDate = jdeToDate(currentNewMoonJDE)
+  const fqDate = jdeToDate(firstQuarterJDE(k))
+  const fmDate = jdeToDate(fullMoonJDE(k))
+  const lqDate = jdeToDate(lastQuarterJDE(k))
+  const nextNewMoonDate = jdeToDate(newMoonJDE(k + 1))
+
+  const dayOf = (m: Date) => dayOfMonthFor(m, monthStartDate, monthLengthDays)
+
+  const fqDay = dayOf(fqDate)
+  const fmDay = dayOf(fmDate)
+  const lqDay = dayOf(lqDate)
+
+  // Mid-bucket estimates for the four between-quarter phases. We use the time
+  // midpoint of the adjacent exact phases \u2014 accurate to ~\u00B112 hours because
+  // the moon doesn't sweep phase angle at perfectly uniform speed (orbital
+  // eccentricity makes it slightly faster near perigee), but plenty good for
+  // "when does the bucket peak" UX.
+  const midpoint = (a: Date, b: Date) => new Date((a.getTime() + b.getTime()) / 2)
+  const waxingCrescentEst = midpoint(newMoonDate, fqDate)
+  const waxingGibbousEst = midpoint(fqDate, fmDate)
+  const waningGibbousEst = midpoint(fmDate, lqDate)
+  const waningCrescentEst = midpoint(lqDate, nextNewMoonDate)
+
+  // Day-of-month for the labels in the grid. Clamped to the month so a long
+  // 30-day lunation doesn't push Waning Crescent past Day N.
+  const clamp = (d: number) => Math.max(1, Math.min(monthLengthDays, d))
+  const between = (a: number, b: number) => clamp(Math.round((a + b) / 2))
+
+  return [
+    {
+      name: "New Crescent",
+      icon: "\uD83C\uDF11",
+      day: 1,
+      desc: "Month begins \u2014 first crescent sighted at sunset",
+      momentEstimate: monthStartDate,
+      momentNote:
+        "Calendar-defined \u00B7 Day 1 begins at sunset when the first thin crescent becomes visible.",
+    },
+    {
+      name: "Waxing Crescent",
+      icon: "\uD83C\uDF12",
+      day: between(1, fqDay),
+      desc: "Growth, intention-setting",
+      momentEstimate: waxingCrescentEst,
+      momentNote: "Estimated mid-bucket \u00B7 \u00B112 h.",
+    },
+    {
+      name: "First Quarter",
+      icon: "\uD83C\uDF13",
+      day: fqDay,
+      desc: "E\u0161e\u0161 observed in many cities \u2014 lamentation, reflection",
+      moment: fqDate,
+    },
+    {
+      name: "Waxing Gibbous",
+      icon: "\uD83C\uDF14",
+      day: between(fqDay, fmDay),
+      desc: "Building toward the e\u0161e\u0161",
+      momentEstimate: waxingGibbousEst,
+      momentNote: "Estimated mid-bucket \u00B7 \u00B112 h.",
+    },
+    {
+      name: "Full Moon (E\u0161e\u0161)",
+      icon: "\uD83C\uDF15",
+      day: fmDay,
+      desc: "E\u0161e\u0161 \u2014 Great Offering to all gods of the household",
+      moment: fmDate,
+    },
+    {
+      name: "Waning Gibbous",
+      icon: "\uD83C\uDF16",
+      day: between(fmDay, lqDay),
+      desc: "Release, gratitude",
+      momentEstimate: waningGibbousEst,
+      momentNote: "Estimated mid-bucket \u00B7 \u00B112 h.",
+    },
+    {
+      name: "Last Quarter",
+      icon: "\uD83C\uDF17",
+      day: lqDay,
+      desc: "Turning inward",
+      moment: lqDate,
+    },
+    {
+      name: "Waning Crescent",
+      icon: "\uD83C\uDF18",
+      day: between(lqDay, monthLengthDays),
+      desc: "Kisiga approaches \u2014 honor your ancestors",
+      momentEstimate: waningCrescentEst,
+      momentNote: "Estimated mid-bucket \u00B7 \u00B112 h.",
+    },
+    {
+      name: "Dark Moon (Kisiga)",
+      icon: "\u26AB",
+      day: monthLengthDays,
+      desc: "Kisiga \u2014 funerary libations for the beloved dead",
+      momentEstimate: nextNewMoonDate,
+      momentNote: `Next conjunction (next month's Day 1): ${formatLongDate(nextNewMoonDate)} at ${formatLongTime(nextNewMoonDate)}.`,
+    },
+  ]
+}
+
+// Detail card for one phase. Tapped from the grid. Surfaces everything we
+// know about the moment — local datetime, relative tense, moon age, and
+// illumination.
+const PhaseDetail: FC<{
+  phase: LunarPhase
+  cal: CalendarData
+  onClose: () => void
+}> = ({ phase, cal, onClose }) => {
+  const currentNewMoon = cal.currentNewMoonJDE
+
+  // Moon age (days since the new-moon conjunction) at the displayed moment.
+  // Computed only for phases with an exact astronomical time — estimates would
+  // mislead since the "Waxing Crescent" age is a bucket, not a number.
+  const moonAgeDays =
+    phase.moment && currentNewMoon
+      ? (phase.moment.getTime() / 86400000 + 2440587.5 - currentNewMoon).toFixed(1)
+      : null
+  const illum = phaseIllumination(phase.name)
+
+  // Exact moment wins; otherwise show the mid-bucket estimate.
+  const displayMoment = phase.moment ?? phase.momentEstimate
+  const isEstimate = !phase.moment && !!phase.momentEstimate
+  const precisionLabel = phase.moment
+    ? "Astronomical event · accurate to ±1 minute"
+    : isEstimate
+      ? phase.momentNote ?? "Estimated"
+      : null
+
+  return (
+    <View style={styles.phaseDetailCard}>
+      <View style={styles.phaseDetailHeader}>
+        <Text style={styles.phaseDetailIcon} text={phase.icon} />
+        <View style={styles.phaseDetailHeaderText}>
+          <Text style={styles.phaseDetailName} text={phase.name} />
+          <Text
+            style={styles.phaseDetailSubtitle}
+            text={`Day ${phase.day} of ${cal.today.monthName}`}
+          />
+        </View>
+        <Pressable onPress={onClose} hitSlop={12} style={styles.phaseDetailClose}>
+          <Text style={styles.phaseDetailCloseText} text="✕" />
+        </Pressable>
+      </View>
+
+      {displayMoment && (
+        <View style={styles.phaseDetailBlock}>
+          <Text style={styles.phaseDetailDate} text={formatLongDate(displayMoment)} />
+          <Text
+            style={styles.phaseDetailTime}
+            text={`${isEstimate ? "~" : ""}${formatLongTime(displayMoment)}`}
+          />
+          <Text style={styles.phaseDetailRelative} text={formatRelative(displayMoment)} />
+          {precisionLabel && (
+            <Text style={styles.phaseDetailPrecision} text={precisionLabel} />
+          )}
+        </View>
+      )}
+
+      {(moonAgeDays || illum !== null) && (
+        <View style={styles.phaseDetailStatsRow}>
+          {moonAgeDays && (
+            <Text style={styles.phaseDetailStat} text={`Moon age · ${moonAgeDays} days`} />
+          )}
+          {illum !== null && (
+            <Text style={styles.phaseDetailStat} text={`Illumination · ${illum}%`} />
+          )}
+        </View>
+      )}
+
+      <Text style={styles.phaseDetailDesc} text={phase.desc} />
+    </View>
+  )
+}
+
+const LunarPhaseBar: FC<{
+  cal: CalendarData | null
+  scrollViewToTop: (viewRef: View | null) => void
+}> = ({ cal, scrollViewToTop }) => {
+  const phases: LunarPhase[] = useMemo(() => {
+    if (!cal?.currentNewMoonJDE || !cal.currentMonthStartDate) return LUNAR_PHASES
+    return computeLunarPhases(
+      cal.currentNewMoonJDE,
+      cal.currentMonthStartDate,
+      cal.monthLengthDays,
+    )
+  }, [cal])
+
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
+  const phaseRefs = useRef<(View | null)[]>([])
+
+  const handleSelect = (i: number) => {
+    if (selectedIndex === i) {
+      setSelectedIndex(null)
+      return
+    }
+    setSelectedIndex(i)
+    // Wait one frame for layout, then bring the tapped row to the top so the
+    // newly revealed detail card is in view.
+    requestAnimationFrame(() => scrollViewToTop(phaseRefs.current[i]))
+  }
+
+  const monthLabel = cal ? `${cal.today.monthName} this lunation` : "this lunation"
+
   return (
     <View style={styles.lunarSection}>
       <View style={styles.lunarDivider} />
-      <Text style={styles.lunarTitle} text={"\u263D Monthly Lunar Observances \u263E"} />
-      <Text style={styles.lunarSubtitle} text="Each lunation follows the same sacred rhythm" />
+      <Text style={styles.lunarTitle} text={"☽ Lunar Phases This Month ☾"} />
+      <Text style={styles.lunarSubtitle} text={`Astronomically computed for ${monthLabel}`} />
+      <Text
+        style={styles.lunarHint}
+        text="Tap a phase for the exact moment, illumination, and location options"
+      />
       <View style={styles.lunarPhaseRow}>
-        {LUNAR_PHASES.map((p, i) => (
-          <View key={i} style={styles.lunarPhaseItem}>
-            <Text style={styles.lunarPhaseIcon} text={p.icon} />
-            <Text style={styles.lunarPhaseName} text={p.name} />
-            <Text style={styles.lunarPhaseDay} text={`Day ${p.day}`} />
-          </View>
-        ))}
+        {phases.map((p, i) => {
+          const isSelected = selectedIndex === i
+          return (
+            <Pressable
+              key={i}
+              ref={(el) => {
+                phaseRefs.current[i] = el as unknown as View | null
+              }}
+              onPress={() => handleSelect(i)}
+              style={[styles.lunarPhaseItem, isSelected && styles.lunarPhaseItemSelected]}
+            >
+              <Text style={styles.lunarPhaseIcon} text={p.icon} />
+              <Text style={styles.lunarPhaseName} text={p.name} />
+              <Text style={styles.lunarPhaseDay} text={`Day ${p.day}`} />
+            </Pressable>
+          )
+        })}
       </View>
+
+      {selectedIndex !== null && cal && (
+        <PhaseDetail
+          phase={phases[selectedIndex]}
+          cal={cal}
+          onClose={() => setSelectedIndex(null)}
+        />
+      )}
+
       <View style={styles.lunarKeyGrid}>
-        {LUNAR_PHASES.filter((p) => KEY_PHASE_DAYS.includes(p.day)).map((p, i) => (
+        {phases.filter((p) => KEY_PHASE_NAMES.includes(p.name)).map((p, i) => (
           <View key={i} style={styles.lunarKeyCard}>
             <View style={styles.lunarKeyHeader}>
               <Text style={styles.lunarKeyIcon} text={p.icon} />
@@ -689,15 +1009,41 @@ const VenusCycleNote: FC = () => {
 // ═══════════════════════════════════════════════════════════
 
 export const CalendarScreen: FC = function CalendarScreen() {
-  const [selected, setSelected] = useState<number | null>(null)
   const [viewMode, setViewMode] = useState("wheel")
   const { width } = useWindowDimensions()
   const cal = useSumerianCalendar()
+  const [selected, setSelected] = useState<number | null>(
+    cal && cal.currentMonthIndex >= 0 ? cal.currentMonthIndex : null,
+  )
 
   const wheelSize = Math.min(width - 40, 560)
 
+  // Imperative scroll bridge so LunarPhaseBar can scroll a tapped row to top.
+  // We track currentScrollY via onScroll because measureInWindow() returns a
+  // SCREEN-space y while scrollTo() wants a CONTENT-space y; we need their
+  // delta to convert.
+  const scrollRef = useRef<KeyboardAwareScrollViewRef | null>(null)
+  const currentScrollY = useRef(0)
+  const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    currentScrollY.current = e.nativeEvent.contentOffset.y
+  }
+  const scrollViewToTop = (viewRef: View | null) => {
+    if (!viewRef || !scrollRef.current) return
+    viewRef.measureInWindow((_x, screenY) => {
+      const TOP_PADDING = 80 // leave room under the status bar
+      const target = currentScrollY.current + (screenY - TOP_PADDING)
+      scrollRef.current?.scrollTo({ x: 0, y: Math.max(0, target), animated: true })
+    })
+  }
+
   return (
-    <Screen preset="scroll" safeAreaEdges={["top"]} backgroundColor="#1c152a">
+    <Screen
+      preset="scroll"
+      safeAreaEdges={["top"]}
+      backgroundColor="#1c152a"
+      scrollRef={scrollRef}
+      ScrollViewProps={{ onScroll, scrollEventThrottle: 16 }}
+    >
       <LinearGradient
         colors={["#1c152a", "#162438", "#251930"]}
         style={styles.gradientBg}
@@ -746,7 +1092,7 @@ export const CalendarScreen: FC = function CalendarScreen() {
             <MonthListView selected={selected} onSelect={setSelected} cal={cal} />
           )}
 
-          <LunarPhaseBar />
+          <LunarPhaseBar cal={cal} scrollViewToTop={scrollViewToTop} />
 
           {cal && <MetonicCycleInfo cal={cal} />}
 
@@ -1278,14 +1624,135 @@ const styles = StyleSheet.create({
     fontSize: typeScale.label,
     textAlign: "center",
   },
+  lunarHint: {
+    color: "#F5E6C866",
+    fontFamily: typography.primary.normal,
+    fontSize: typeScale.small,
+    letterSpacing: 0.5,
+    marginBottom: 12,
+    marginTop: 4,
+    textAlign: "center",
+  },
   lunarPhaseIcon: {
     fontFamily: typography.primary.normal,
     fontSize: typeScale.subtitle,
   },
+  phaseDetailBlock: {
+    alignItems: "center",
+    gap: 2,
+    marginBottom: 12,
+  },
+  phaseDetailCard: {
+    backgroundColor: "#1a1424cc",
+    borderColor: "#C9A84C44",
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 24,
+    marginTop: 4,
+    padding: 20,
+  },
+  phaseDetailClose: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  phaseDetailCloseText: {
+    color: "#F5E6C888",
+    fontFamily: typography.primary.normal,
+    fontSize: typeScale.subtitle,
+  },
+  phaseDetailDate: {
+    color: "#F5E6C8",
+    fontFamily: typography.primary.semiBold,
+    fontSize: typeScale.body,
+    letterSpacing: 0.5,
+    textAlign: "center",
+  },
+  phaseDetailDesc: {
+    color: "#F5E6C8aa",
+    fontFamily: typography.primary.normal,
+    fontSize: typeScale.caption,
+    letterSpacing: 0.3,
+    lineHeight: 22,
+    textAlign: "center",
+  },
+  phaseDetailHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 16,
+  },
+  phaseDetailHeaderText: {
+    flex: 1,
+  },
+  phaseDetailIcon: {
+    fontFamily: typography.primary.normal,
+    fontSize: typeScale.display,
+  },
+  phaseDetailName: {
+    color: "#C9A84C",
+    fontFamily: typography.primary.semiBold,
+    fontSize: typeScale.subtitle,
+    letterSpacing: 1,
+  },
+  phaseDetailPrecision: {
+    color: "#C9A84C99",
+    fontFamily: typography.primary.normal,
+    fontSize: typeScale.small,
+    fontStyle: "italic",
+    letterSpacing: 0.3,
+    marginTop: 6,
+    paddingHorizontal: 12,
+    textAlign: "center",
+  },
+  phaseDetailRelative: {
+    color: "#F5E6C888",
+    fontFamily: typography.primary.normal,
+    fontSize: typeScale.caption,
+    fontStyle: "italic",
+    marginTop: 4,
+    textAlign: "center",
+  },
+  phaseDetailStat: {
+    color: "#F5E6C8cc",
+    fontFamily: typography.primary.normal,
+    fontSize: typeScale.caption,
+    letterSpacing: 0.3,
+  },
+  phaseDetailStatsRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 16,
+    justifyContent: "center",
+    marginBottom: 12,
+  },
+  phaseDetailSubtitle: {
+    color: "#F5E6C888",
+    fontFamily: typography.primary.normal,
+    fontSize: typeScale.caption,
+    letterSpacing: 0.5,
+    marginTop: 2,
+  },
+  phaseDetailTime: {
+    color: "#F5E6C8",
+    fontFamily: typography.primary.normal,
+    fontSize: typeScale.body,
+    letterSpacing: 0.5,
+    textAlign: "center",
+  },
   lunarPhaseItem: {
     alignItems: "center",
+    borderColor: "transparent",
+    borderRadius: 12,
+    borderWidth: 1,
     gap: 4,
     minWidth: 64,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+  },
+  lunarPhaseItemSelected: {
+    backgroundColor: "#C9A84C18",
+    borderColor: "#C9A84C66",
   },
   lunarPhaseName: {
     color: "#F5E6C8cc",

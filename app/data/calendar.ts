@@ -314,6 +314,17 @@ export interface LunarPhase {
   icon: string
   day: number
   desc: string
+  /** Astronomical moment (UTC) for phases with an exact conjunction / quarter
+   *  / opposition time — accurate to ≈1 minute. */
+  moment?: Date
+  /** Mid-bucket estimate (UTC) for phases that span multiple days (waxing
+   *  crescent / waxing gibbous / waning gibbous / waning crescent). Useful
+   *  precision: ±12 hours. Also used to anchor calendar-defined entries
+   *  (New Crescent, Dark Moon) to their canonical Day 1 / Day N dates. */
+  momentEstimate?: Date
+  /** Short note shown beneath the time block in the detail card — e.g.
+   *  "Sumerian month begins at first crescent at sunset." */
+  momentNote?: string
 }
 
 export const LUNAR_PHASES: LunarPhase[] = [

@@ -1,4 +1,4 @@
-import { ReactNode, useRef, useState } from "react"
+import { ReactNode, useImperativeHandle, useRef, useState } from "react"
 import {
   KeyboardAvoidingView,
   KeyboardAvoidingViewProps,
@@ -79,6 +79,11 @@ interface ScrollScreenProps extends BaseScreenProps {
    * Pass any additional props directly to the ScrollView component.
    */
   ScrollViewProps?: ScrollViewProps
+  /**
+   * Imperative ref to the underlying KeyboardAwareScrollView, for callers
+   * that need to programmatically scroll (e.g. scroll a tapped row into view).
+   */
+  scrollRef?: React.Ref<KeyboardAwareScrollViewRef>
 }
 
 interface AutoScreenProps extends Omit<ScrollScreenProps, "preset"> {
@@ -197,9 +202,13 @@ function ScreenWithScrolling(props: ScreenProps) {
     contentContainerStyle,
     ScrollViewProps,
     style,
+    scrollRef,
   } = props as ScrollScreenProps
 
   const ref = useRef<KeyboardAwareScrollViewRef>(null)
+
+  // Bridge the internal ref out to any external scrollRef the caller passed.
+  useImperativeHandle(scrollRef, () => ref.current as KeyboardAwareScrollViewRef, [])
 
   const { scrollEnabled, onContentSizeChange, onLayout } = useAutoPreset(props as AutoScreenProps)
 
