@@ -100,3 +100,5 @@ app-dependency-graph.png
 # eas
 credentials.json
 /dist
+*.aab
+*.ipa
