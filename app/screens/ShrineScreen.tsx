@@ -204,28 +204,6 @@ const ShrineScreenImpl: FC = function ShrineScreenImpl() {
         )}
       </View>
 
-      {/* Footer */}
-      <View style={styles.footer}>
-        <Text
-          style={styles.footerText}
-          text={
-            litCount === 0
-              ? "Tap a candle to light it"
-              : litCount === TOTAL_CANDLES
-                ? "All candles burn for \u{1202D}Inanna"
-                : `${litCount} of ${TOTAL_CANDLES} candles lit`
-          }
-        />
-        {/* Progress dots */}
-        <View style={styles.progressRow}>
-          {CANDLE_POSITIONS.map((c) => (
-            <View
-              key={c.id}
-              style={[styles.progressDot, litCandles.has(c.id) && styles.progressDotLit]}
-            />
-          ))}
-        </View>
-      </View>
     </View>
   )
 }
@@ -257,17 +235,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 12,
   },
-  footer: {
-    alignItems: "center",
-    paddingBottom: 40,
-    paddingTop: 12,
-  },
-  footerText: {
-    color: "#F5E6C877",
-    fontFamily: typography.primary.normal,
-    fontSize: typeScale.caption,
-    letterSpacing: 2,
-  },
   header: {
     alignItems: "center",
     flexDirection: "row",
@@ -293,20 +260,6 @@ const styles = StyleSheet.create({
   imageContainer: {
     flex: 1,
     overflow: "hidden",
-  },
-  progressDot: {
-    backgroundColor: "#F5E6C822",
-    borderRadius: 3,
-    height: 6,
-    width: 6,
-  },
-  progressDotLit: {
-    backgroundColor: "#C9A84C",
-  },
-  progressRow: {
-    flexDirection: "row",
-    gap: 5,
-    marginTop: 8,
   },
   resetText: {
     color: "#F5E6C855",
