@@ -4,6 +4,7 @@ import {
   NativeSyntheticEvent,
   Pressable,
   StyleSheet,
+  TextInput,
   View,
   ViewStyle,
   useWindowDimensions,
@@ -43,6 +44,14 @@ import {
   lastQuarterJDE,
   newMoonJDE,
 } from "@/utils/moonPhase"
+import {
+  NibiruEvent,
+  nextJupiterMeridianTransits,
+  nextJupiterOppositions,
+  nextMercurySolarTransits,
+} from "@/utils/nibiru"
+import { NIPPUR, UserLocation, useUserLocation } from "@/utils/useUserLocation"
+import * as Astronomy from "astronomy-engine"
 
 // ═══════════════════════════════════════════════════════════
 // HELPERS
@@ -76,10 +85,13 @@ function formatDate(d: Date): string {
 // SUMERIAN DATE HOOK
 // ═══════════════════════════════════════════════════════════
 
-function useSumerianCalendar() {
+function useSumerianCalendar(location: UserLocation) {
   return useMemo(() => {
     try {
-      const sd = sumerianDate()
+      const sd = sumerianDate(undefined, {
+        latitude: location.lat,
+        longitude: location.lon,
+      })
       const sy = sd.sumerianYear
       const currentMonthIndex = MONTH_NAME_TO_INDEX[sd.monthName] ?? -1
 
@@ -121,7 +133,7 @@ function useSumerianCalendar() {
     } catch {
       return null
     }
-  }, [])
+  }, [location.lat, location.lon])
 }
 
 type CalendarData = NonNullable<ReturnType<typeof useSumerianCalendar>>
@@ -927,6 +939,179 @@ const LunarPhaseBar: FC<{
 }
 
 // ═══════════════════════════════════════════════════════════
+// NIBIRU / THE CROSSING
+// ═══════════════════════════════════════════════════════════
+
+type NibiruReading = "opposition" | "meridian" | "transit"
+
+const NIBIRU_READINGS: { id: NibiruReading; pill: string; title: string; blurb: string }[] = [
+  {
+    id: "opposition",
+    pill: "Jupiter Opposition",
+    title: "Jupiter at Opposition",
+    blurb:
+      "Sun–Earth–Jupiter aligned at 180° heliocentric longitude. Marduk rises at sunset, brightest of the year. Occurs every ~399 days.",
+  },
+  {
+    id: "meridian",
+    pill: "Jupiter Meridian",
+    title: "Jupiter Meridian Transit",
+    blurb:
+      "Daily upper culmination — the moment Jupiter crosses your local meridian (hour angle zero). Babylonian priests timed observations at this passing.",
+  },
+  {
+    id: "transit",
+    pill: "Mercury Transit",
+    title: "Mercury Solar Transit",
+    blurb:
+      "Rare disk-crossing — Mercury silhouetted against the Sun. ~14 events per century. The most literal reading of the 'crossing' tradition.",
+  },
+]
+
+const NibiruSection: FC<{ location: ReturnType<typeof useUserLocation> }> = ({ location }) => {
+  const [reading, setReading] = useState<NibiruReading>("opposition")
+  const [showZipEntry, setShowZipEntry] = useState(false)
+  const [country, setCountry] = useState("us")
+  const [zip, setZip] = useState("")
+
+  const events: NibiruEvent[] = useMemo(() => {
+    const now = new Date()
+    if (reading === "opposition") return nextJupiterOppositions(now, 3)
+    if (reading === "transit") return nextMercurySolarTransits(now, 3)
+    const observer = new Astronomy.Observer(location.location.lat, location.location.lon, 0)
+    return nextJupiterMeridianTransits(observer, now, 3)
+  }, [reading, location.location.lat, location.location.lon])
+
+  const active = NIBIRU_READINGS.find((r) => r.id === reading)!
+
+  const submitZip = async () => {
+    const fix = await location.setFromZip(country, zip)
+    if (fix) {
+      setShowZipEntry(false)
+      setZip("")
+    }
+  }
+
+  return (
+    <View style={styles.nibiruSection}>
+      <View style={styles.lunarDivider} />
+      <Text style={styles.lunarTitle} text="✦ Nibiru — The Crossing ✦" />
+      <Text
+        style={styles.lunarSubtitle}
+        text="Three scholarly readings of the Babylonian crossing-star"
+      />
+
+      <View style={styles.nibiruPillRow}>
+        {NIBIRU_READINGS.map((r) => {
+          const selected = r.id === reading
+          return (
+            <Pressable
+              key={r.id}
+              onPress={() => setReading(r.id)}
+              style={[styles.nibiruPill, selected && styles.nibiruPillSelected]}
+            >
+              <Text
+                style={[styles.nibiruPillText, selected && styles.nibiruPillTextSelected]}
+                text={r.pill}
+              />
+            </Pressable>
+          )
+        })}
+      </View>
+
+      <Text style={styles.nibiruBlurb} text={active.blurb} />
+
+      <View style={styles.nibiruEventList}>
+        {events.length === 0 && (
+          <Text style={styles.nibiruEmpty} text="No upcoming events in the searched window." />
+        )}
+        {events.map((e, i) => (
+          <View key={i} style={styles.nibiruEventCard}>
+            <Text style={styles.nibiruEventDate} text={formatLongDate(e.time)} />
+            <Text style={styles.nibiruEventTime} text={formatLongTime(e.time)} />
+            <Text style={styles.nibiruEventRelative} text={formatRelative(e.time)} />
+            {e.meta && (
+              <View style={styles.nibiruEventMetaRow}>
+                {Object.entries(e.meta).map(([k, v]) => (
+                  <Text key={k} style={styles.nibiruEventMeta} text={`${k}: ${v}`} />
+                ))}
+              </View>
+            )}
+          </View>
+        ))}
+      </View>
+
+      <View style={styles.nibiruLocRow}>
+        <Text style={styles.nibiruLocText} text={`📍 ${location.location.label}`} />
+        <View style={styles.nibiruLocBtnRow}>
+          <Pressable onPress={() => setShowZipEntry(!showZipEntry)} style={styles.nibiruLocBtn}>
+            <Text
+              style={styles.nibiruLocBtnText}
+              text={showZipEntry ? "Cancel" : "Change"}
+            />
+          </Pressable>
+          {location.location.source === "zip" && (
+            <Pressable onPress={location.reset} style={styles.nibiruLocBtn}>
+              <Text style={styles.nibiruLocBtnText} text="Auto" />
+            </Pressable>
+          )}
+        </View>
+      </View>
+
+      {showZipEntry && (
+        <View style={styles.nibiruZipBox}>
+          <Text
+            style={styles.nibiruZipHint}
+            text="Postal code lookup · powered by zippopotam.us"
+          />
+          <View style={styles.nibiruZipRow}>
+            <TextInput
+              value={country}
+              onChangeText={(v) => setCountry(v.toLowerCase().slice(0, 2))}
+              placeholder="us"
+              placeholderTextColor="#F5E6C855"
+              autoCapitalize="none"
+              autoCorrect={false}
+              style={styles.nibiruZipCountry}
+            />
+            <TextInput
+              value={zip}
+              onChangeText={setZip}
+              placeholder="ZIP / postal code"
+              placeholderTextColor="#F5E6C855"
+              autoCapitalize="none"
+              autoCorrect={false}
+              onSubmitEditing={submitZip}
+              returnKeyType="search"
+              style={styles.nibiruZipInput}
+            />
+            <Pressable
+              onPress={submitZip}
+              disabled={location.status === "loading"}
+              style={styles.nibiruZipSubmit}
+            >
+              <Text
+                style={styles.nibiruZipSubmitText}
+                text={location.status === "loading" ? "…" : "Set"}
+              />
+            </Pressable>
+          </View>
+          {location.status === "not-found" && (
+            <Text
+              style={styles.nibiruZipError}
+              text="Couldn't find that postal code. Country code: us · gb · ca · de · fr · au · jp · …"
+            />
+          )}
+          {location.status === "error" && (
+            <Text style={styles.nibiruZipError} text="Lookup failed — check connection?" />
+          )}
+        </View>
+      )}
+    </View>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════
 // METONIC CYCLE INFO
 // ═══════════════════════════════════════════════════════════
 
@@ -1011,7 +1196,8 @@ const VenusCycleNote: FC = () => {
 export const CalendarScreen: FC = function CalendarScreen() {
   const [viewMode, setViewMode] = useState("wheel")
   const { width } = useWindowDimensions()
-  const cal = useSumerianCalendar()
+  const userLocation = useUserLocation()
+  const cal = useSumerianCalendar(userLocation.location)
   const [selected, setSelected] = useState<number | null>(
     cal && cal.currentMonthIndex >= 0 ? cal.currentMonthIndex : null,
   )
@@ -1093,6 +1279,8 @@ export const CalendarScreen: FC = function CalendarScreen() {
           )}
 
           <LunarPhaseBar cal={cal} scrollViewToTop={scrollViewToTop} />
+
+          <NibiruSection location={userLocation} />
 
           {cal && <MetonicCycleInfo cal={cal} />}
 
@@ -1791,6 +1979,200 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     textAlign: "center",
     textTransform: "uppercase",
+  },
+  nibiruBlurb: {
+    color: "#F5E6C8aa",
+    fontFamily: typography.primary.normal,
+    fontSize: typeScale.caption,
+    lineHeight: typeScale.caption * 1.6,
+    marginBottom: 16,
+    paddingHorizontal: 8,
+    textAlign: "center",
+  },
+  nibiruEmpty: {
+    color: "#F5E6C866",
+    fontFamily: typography.primary.normal,
+    fontSize: typeScale.caption,
+    fontStyle: "italic",
+    paddingVertical: 12,
+    textAlign: "center",
+  },
+  nibiruEventCard: {
+    alignItems: "center",
+    backgroundColor: "#1a142488",
+    borderColor: "#C9A84C33",
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  nibiruEventDate: {
+    color: "#F5E6C8",
+    fontFamily: typography.primary.semiBold,
+    fontSize: typeScale.body,
+    textAlign: "center",
+  },
+  nibiruEventList: {
+    marginBottom: 16,
+  },
+  nibiruEventMeta: {
+    color: "#C9A84C99",
+    fontFamily: typography.primary.normal,
+    fontSize: typeScale.small,
+  },
+  nibiruEventMetaRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+    justifyContent: "center",
+    marginTop: 6,
+  },
+  nibiruEventRelative: {
+    color: "#F5E6C888",
+    fontFamily: typography.primary.normal,
+    fontSize: typeScale.caption,
+    fontStyle: "italic",
+    marginTop: 2,
+  },
+  nibiruEventTime: {
+    color: "#F5E6C8",
+    fontFamily: typography.primary.normal,
+    fontSize: typeScale.body,
+    marginTop: 4,
+    textAlign: "center",
+  },
+  nibiruLocBtn: {
+    backgroundColor: "#C9A84C22",
+    borderColor: "#C9A84C66",
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  nibiruLocBtnRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  nibiruLocBtnText: {
+    color: "#C9A84C",
+    fontFamily: typography.primary.normal,
+    fontSize: typeScale.label,
+    letterSpacing: 0.5,
+  },
+  nibiruLocRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    justifyContent: "space-between",
+    paddingHorizontal: 4,
+  },
+  nibiruLocText: {
+    color: "#F5E6C899",
+    flex: 1,
+    fontFamily: typography.primary.normal,
+    fontSize: typeScale.caption,
+    minWidth: 200,
+  },
+  nibiruPill: {
+    backgroundColor: "#F5E6C808",
+    borderColor: "#F5E6C822",
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  nibiruPillRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    justifyContent: "center",
+    marginBottom: 16,
+  },
+  nibiruPillSelected: {
+    backgroundColor: "#C9A84C22",
+    borderColor: "#C9A84C",
+  },
+  nibiruPillText: {
+    color: "#F5E6C8aa",
+    fontFamily: typography.primary.normal,
+    fontSize: typeScale.label,
+    letterSpacing: 0.5,
+  },
+  nibiruPillTextSelected: {
+    color: "#C9A84C",
+  },
+  nibiruSection: {
+    alignSelf: "center",
+    marginTop: 32,
+    maxWidth: 640,
+    paddingTop: 20,
+    width: "100%",
+  },
+  nibiruZipBox: {
+    backgroundColor: "#1a142488",
+    borderColor: "#C9A84C33",
+    borderRadius: 12,
+    borderWidth: 1,
+    marginTop: 10,
+    padding: 12,
+  },
+  nibiruZipCountry: {
+    backgroundColor: "#0a0a14",
+    borderColor: "#C9A84C44",
+    borderRadius: 8,
+    borderWidth: 1,
+    color: "#F5E6C8",
+    fontFamily: typography.primary.normal,
+    fontSize: typeScale.body,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    textAlign: "center",
+    width: 50,
+  },
+  nibiruZipError: {
+    color: "#E89A8E",
+    fontFamily: typography.primary.normal,
+    fontSize: typeScale.small,
+    marginTop: 8,
+    textAlign: "center",
+  },
+  nibiruZipHint: {
+    color: "#F5E6C866",
+    fontFamily: typography.primary.normal,
+    fontSize: typeScale.small,
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  nibiruZipInput: {
+    backgroundColor: "#0a0a14",
+    borderColor: "#C9A84C44",
+    borderRadius: 8,
+    borderWidth: 1,
+    color: "#F5E6C8",
+    flex: 1,
+    fontFamily: typography.primary.normal,
+    fontSize: typeScale.body,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  nibiruZipRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 8,
+  },
+  nibiruZipSubmit: {
+    backgroundColor: "#C9A84C",
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  nibiruZipSubmitText: {
+    color: "#1a1424",
+    fontFamily: typography.primary.semiBold,
+    fontSize: typeScale.body,
   },
   metonicContainer: {
     alignSelf: "center",
