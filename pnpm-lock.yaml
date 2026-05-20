@@ -56,6 +56,9 @@ importers:
       expo-build-properties:
         specifier: ~55.0.14
         version: 55.0.14(expo@55.0.24)
+      expo-constants:
+        specifier: ~55.0.16
+        version: 55.0.16(expo@55.0.24)(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))
       expo-dev-client:
         specifier: ~55.0.34
         version: 55.0.34(expo@55.0.24)

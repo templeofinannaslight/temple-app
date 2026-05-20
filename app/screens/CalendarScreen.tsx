@@ -10,7 +10,9 @@ import {
   useWindowDimensions,
 } from "react-native"
 import type { KeyboardAwareScrollViewRef } from "react-native-keyboard-controller"
+import Constants from "expo-constants"
 import { LinearGradient } from "expo-linear-gradient"
+import * as Updates from "expo-updates"
 import { sumerianDate } from "@jenova-marie/sumerian-date"
 import Svg, {
   Circle,
@@ -79,6 +81,24 @@ function formatDateRange(start: Date, end: Date): string {
 
 function formatDate(d: Date): string {
   return `${d.getUTCDate()} ${MONTH_ABBRS[d.getUTCMonth()]} ${d.getUTCFullYear()}`
+}
+
+// Build the bottom-of-screen version stamp: app semver + a short OTA marker so
+// a device can be cross-referenced against `eas update:list`. When running the
+// bundle baked into the binary (no OTA applied yet) we show "-base"; otherwise
+// the first 8 chars of the running update's UUID. Both expo-constants and
+// expo-updates are already linked natively, so this ships fine over OTA.
+function versionLabel(): string {
+  const version = Constants.expoConfig?.version ?? "?.?.?"
+  let ota = "base"
+  try {
+    if (Updates.isEnabled && !Updates.isEmbeddedLaunch && Updates.updateId) {
+      ota = Updates.updateId.slice(0, 8)
+    }
+  } catch {
+    /* expo-updates unavailable (e.g. Expo Go) — keep "base" */
+  }
+  return `v${version}-${ota}`
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1298,6 +1318,7 @@ export const CalendarScreen: FC = function CalendarScreen() {
               style={styles.footerBlessing}
               text={"\u{1202D}Inanna-zami \u2014 \u201C\u{1202D}Inanna be praised\u201D"}
             />
+            <Text style={styles.footerVersion} text={versionLabel()} />
           </View>
         </View>
       </LinearGradient>
@@ -1652,6 +1673,14 @@ const styles = StyleSheet.create({
   footerContainer: {
     alignItems: "center",
     marginTop: 32,
+  },
+  footerVersion: {
+    color: "#F5E6C822",
+    fontFamily: typography.primary.normal,
+    fontSize: typeScale.small,
+    letterSpacing: 1,
+    marginTop: 16,
+    textAlign: "center",
   },
   footerText: {
     color: "#F5E6C833",
