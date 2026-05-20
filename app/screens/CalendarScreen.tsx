@@ -1675,7 +1675,7 @@ const styles = StyleSheet.create({
     marginTop: 32,
   },
   footerVersion: {
-    color: "#F5E6C822",
+    color: "#F5E6C866",
     fontFamily: typography.primary.normal,
     fontSize: typeScale.small,
     letterSpacing: 1,
