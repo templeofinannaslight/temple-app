@@ -370,6 +370,9 @@ export const MONTH_NAME_TO_INDEX: Record<string, number> = {
   "Sig Ga": 2,
   "Šunumun": 3,
   "Nenegar": 4,
+  // @jenova-marie/sumerian-date emits the single-n scholarly transliteration
+  // "Inana"; the temple's display spelling is "Inanna". Accept both.
+  "Kin Inana": 5,
   "Kin Inanna": 5,
   "Duku": 6,
   "Apin Dua": 7,
@@ -378,6 +381,7 @@ export const MONTH_NAME_TO_INDEX: Record<string, number> = {
   "Uduru": 10,
   "Šekinku": 11,
   "Diri Šekinku": 12,
+  "Diri Kin Inana": 12,
   "Diri Kin Inanna": 12,
 }
 
