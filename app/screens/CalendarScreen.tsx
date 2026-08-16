@@ -285,7 +285,15 @@ const MonthWheel: FC<{
         const labelFontSize = smallWheel ? 10 : 13
         const labelWeight = isSelected ? "700" : isCurrent ? "600" : "400"
 
-        const approxLabel = m.num <= 12 ? m.approx : "\u2727"
+        // Only real computed dates are printed on the rim \u2014 if the astronomy
+        // computation failed there is no honest range to show. Month 13 keeps
+        // its glyph in years where it is not observed.
+        const computed = cal?.monthDates.get(i)
+        const rimDateLabel = computed
+          ? `${MONTH_ABBRS[computed.startDate.getUTCMonth()]} \u2013 ${MONTH_ABBRS[computed.endDate.getUTCMonth()]}`
+          : m.num <= 12
+            ? ""
+            : "\u2727"
 
         return (
           <G key={m.num} onPress={() => onSelect(isSelected ? null : i)}>
