@@ -115,7 +115,10 @@ function useSumerianCalendar(location: UserLocation) {
       const sy = sd.sumerianYear
       const currentMonthIndex = MONTH_NAME_TO_INDEX[sd.monthName] ?? -1
 
-      const monthDates = new Map<number, { startDate: Date; endDate: Date; lengthDays: number }>()
+      const monthDates = new Map<
+        number,
+        { startDate: Date; endDate: Date; lengthDays: number; newMoonJDE: number }
+      >()
       let currentNewMoonJDE: number | null = null
       let currentMonthStartDate: Date | null = null
       for (const m of sy.months) {
@@ -125,6 +128,7 @@ function useSumerianCalendar(location: UserLocation) {
             startDate: m.startDate,
             endDate: m.endDate,
             lengthDays: m.lengthDays,
+            newMoonJDE: m.newMoonJDE,
           })
         }
         if (m.name === sd.monthName) {
@@ -831,17 +835,16 @@ function computeLunarPhases(
 // illumination.
 const PhaseDetail: FC<{
   phase: LunarPhase
-  cal: CalendarData
+  monthName: string
+  anchorNewMoonJDE: number | null
   onClose: () => void
-}> = ({ phase, cal, onClose }) => {
-  const currentNewMoon = cal.currentNewMoonJDE
-
+}> = ({ phase, monthName, anchorNewMoonJDE, onClose }) => {
   // Moon age (days since the new-moon conjunction) at the displayed moment.
   // Computed only for phases with an exact astronomical time — estimates would
   // mislead since the "Waxing Crescent" age is a bucket, not a number.
   const moonAgeDays =
-    phase.moment && currentNewMoon
-      ? (phase.moment.getTime() / 86400000 + 2440587.5 - currentNewMoon).toFixed(1)
+    phase.moment && anchorNewMoonJDE
+      ? (phase.moment.getTime() / 86400000 + 2440587.5 - anchorNewMoonJDE).toFixed(1)
       : null
   const illum = phaseIllumination(phase.name)
 
@@ -862,7 +865,7 @@ const PhaseDetail: FC<{
           <Text style={styles.phaseDetailName} text={phase.name} />
           <Text
             style={styles.phaseDetailSubtitle}
-            text={`Day ${phase.day} of ${cal.today.monthName}`}
+            text={`Day ${phase.day} of ${monthName}`}
           />
         </View>
         <Pressable onPress={onClose} hitSlop={12} style={styles.phaseDetailClose}>
@@ -902,16 +905,23 @@ const PhaseDetail: FC<{
 
 const LunarPhaseBar: FC<{
   cal: CalendarData | null
+  selectedMonth: number | null
   scrollViewToTop: (viewRef: View | null) => void
-}> = ({ cal, scrollViewToTop }) => {
+}> = ({ cal, selectedMonth, scrollViewToTop }) => {
+  // The lunation shown follows the month selected on the wheel/list, so the
+  // Ešeš of a future month (e.g. Kin 𒀭Inanna) can be planned ahead. With no
+  // selection — or a selected month with no dates this year, like Diri in a
+  // standard year — it shows the current month.
+  const targetIndex =
+    selectedMonth !== null && cal?.monthDates.has(selectedMonth)
+      ? selectedMonth
+      : (cal?.currentMonthIndex ?? null)
+  const target = targetIndex !== null ? cal?.monthDates.get(targetIndex) : undefined
+
   const phases: LunarPhase[] = useMemo(() => {
-    if (!cal?.currentNewMoonJDE || !cal.currentMonthStartDate) return LUNAR_PHASES
-    return computeLunarPhases(
-      cal.currentNewMoonJDE,
-      cal.currentMonthStartDate,
-      cal.monthLengthDays,
-    )
-  }, [cal])
+    if (!target) return LUNAR_PHASES
+    return computeLunarPhases(target.newMoonJDE, target.startDate, target.lengthDays)
+  }, [target])
 
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
   const phaseRefs = useRef<(View | null)[]>([])
@@ -927,13 +937,17 @@ const LunarPhaseBar: FC<{
     requestAnimationFrame(() => scrollViewToTop(phaseRefs.current[i]))
   }
 
-  const monthLabel = cal ? `${cal.today.monthName} this lunation` : "this lunation"
+  const monthDisplayName = targetIndex !== null ? MONTHS[targetIndex].akkadian : null
+  const title = monthDisplayName ? `☽ Lunar Phases · ${monthDisplayName} ☾` : "☽ Lunar Phases ☾"
+  const subtitle = target
+    ? `Astronomically computed · ${formatDateRange(target.startDate, target.endDate)}`
+    : "Astronomically computed for this lunation"
 
   return (
     <View style={styles.lunarSection}>
       <View style={styles.lunarDivider} />
-      <Text style={styles.lunarTitle} text={"☽ Lunar Phases This Month ☾"} />
-      <Text style={styles.lunarSubtitle} text={`Astronomically computed for ${monthLabel}`} />
+      <Text style={styles.lunarTitle} text={title} />
+      <Text style={styles.lunarSubtitle} text={subtitle} />
       <Text
         style={styles.lunarHint}
         text="Tap a phase for the exact moment, illumination, and location options"
@@ -958,10 +972,11 @@ const LunarPhaseBar: FC<{
         })}
       </View>
 
-      {selectedIndex !== null && cal && (
+      {selectedIndex !== null && monthDisplayName && (
         <PhaseDetail
           phase={phases[selectedIndex]}
-          cal={cal}
+          monthName={monthDisplayName}
+          anchorNewMoonJDE={target?.newMoonJDE ?? null}
           onClose={() => setSelectedIndex(null)}
         />
       )}
@@ -1321,7 +1336,7 @@ export const CalendarScreen: FC = function CalendarScreen() {
             <MonthListView selected={selected} onSelect={setSelected} cal={cal} />
           )}
 
-          <LunarPhaseBar cal={cal} scrollViewToTop={scrollViewToTop} />
+          <LunarPhaseBar cal={cal} selectedMonth={selected} scrollViewToTop={scrollViewToTop} />
 
           <NibiruSection location={userLocation} />
 
