@@ -326,7 +326,7 @@ const MonthWheel: FC<{
               originX={nx}
               originY={ny}
             >
-              {approxLabel}
+              {rimDateLabel}
             </SvgText>
           </G>
         )
@@ -430,7 +430,11 @@ const MonthDetail: FC<{
   const monthIndex = MONTHS.indexOf(month)
   const isCurrent = cal ? monthIndex === cal.currentMonthIndex : false
   const dates = cal?.monthDates.get(monthIndex)
-  const dateRange = dates ? formatDateRange(dates.startDate, dates.endDate) : month.approx
+  const dateRange = dates
+    ? formatDateRange(dates.startDate, dates.endDate)
+    : month.num === 13
+      ? "Intercalary"
+      : null
   const isIntercalaryNotObserved = month.num === 13 && cal != null && !cal.isIntercalaryYear
 
   return (
@@ -446,7 +450,10 @@ const MonthDetail: FC<{
             { backgroundColor: month.color, shadowColor: month.color },
           ]}
         />
-        <Text style={styles.detailHeaderLabel} text={`Month ${month.num} \u00B7 ${dateRange}`} />
+        <Text
+          style={styles.detailHeaderLabel}
+          text={dateRange ? `Month ${month.num} \u00B7 ${dateRange}` : `Month ${month.num}`}
+        />
         {isCurrent && (
           <View style={styles.detailNowBadge}>
             <Text style={styles.detailNowText} text="NOW" />
@@ -589,7 +596,11 @@ const MonthListView: FC<{
       {MONTHS.map((m, i) => {
         const isCurrent = cal ? i === cal.currentMonthIndex : false
         const dates = cal?.monthDates.get(i)
-        const dateLabel = dates ? formatDateRange(dates.startDate, dates.endDate) : m.approx
+        const dateLabel = dates
+          ? formatDateRange(dates.startDate, dates.endDate)
+          : m.num === 13
+            ? "Intercalary"
+            : "Dates unavailable"
         const isExpanded = selected === i
 
         const cardBg = isExpanded ? `${m.color}15` : isCurrent ? `${m.color}0a` : "transparent"
@@ -616,13 +627,17 @@ const MonthListView: FC<{
                 />
                 <View>
                   <View style={styles.listNameRow}>
-                    <Text style={styles.listMonthName} text={m.akkadian} />
-                    <Text style={styles.listDateLabel} text={dateLabel} />
+                    <Text style={styles.listMonthName} text={m.akkadian} numberOfLines={1} />
                     {isCurrent && <Text style={styles.listNowLabel} text={"\u2726 NOW"} />}
                   </View>
+                  <Text style={styles.listDateLabel} text={dateLabel} numberOfLines={1} />
                 </View>
               </View>
-              <Text style={[styles.listMythLabel, { color: m.color }]} text={m.mythCycle} />
+              <Text
+                style={[styles.listMythLabel, { color: m.color }]}
+                text={m.mythCycle}
+                numberOfLines={2}
+              />
             </View>
 
             {isExpanded && (
@@ -1749,12 +1764,13 @@ const styles = StyleSheet.create({
   listCardHeader: {
     alignItems: "center",
     flexDirection: "row",
+    gap: 12,
     justifyContent: "space-between",
   },
   listCardLeft: {
     alignItems: "center",
     flexDirection: "row",
-    flex: 1,
+    flexShrink: 0,
     gap: 12,
   },
   listColorDot: {
@@ -1774,7 +1790,7 @@ const styles = StyleSheet.create({
     color: "#F5E6C877",
     fontFamily: typography.primary.normal,
     fontSize: typeScale.label,
-    marginLeft: 10,
+    marginTop: 2,
   },
   listExpandedDetail: {
     marginTop: 16,
@@ -1786,22 +1802,24 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   listMythLabel: {
+    flexShrink: 1,
     fontFamily: typography.primary.normal,
     fontSize: typeScale.caption,
-    letterSpacing: 2,
+    letterSpacing: 1,
+    lineHeight: 18,
     opacity: 0.9,
+    textAlign: "right",
   },
   listNameRow: {
     alignItems: "center",
     flexDirection: "row",
-    flexWrap: "wrap",
+    gap: 8,
   },
   listNowLabel: {
     color: "#C9A84C",
     fontFamily: typography.primary.semiBold,
     fontSize: typeScale.label,
     letterSpacing: 2,
-    marginLeft: 8,
   },
   lunarDivider: {
     backgroundColor: "#C9A84C22",
