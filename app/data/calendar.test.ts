@@ -4,8 +4,8 @@ import { MONTH_NAME_TO_INDEX } from "./calendar"
 
 // The Calendar screen joins the library's computed months onto the wheel's
 // month data by name. A spelling drift between the two vocabularies silently
-// drops a month from monthDates (its card falls back to the static "approx"
-// range) and, when that month is current, breaks the whole current-month UI.
+// drops a month from monthDates (its dates render as "Dates unavailable")
+// and, when that month is current, breaks the whole current-month UI.
 // Sweep enough years to cover both intercalary variants (Diri Kin Inana
 // appears in 2042; Diri Šekinku in most long years).
 test("every month name the library can emit maps to a wheel index", () => {
